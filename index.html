@@ -160,11 +160,6 @@
   <div class="card">
 
     <div class="field">
-      <label for="airport">Airport name or ICAO</label>
-      <input type="text" id="airport" placeholder="e.g. Fort Lauderdale Executive or KFXE" autocomplete="off" />
-    </div>
-
-    <div class="field">
       <label for="dol">Date of Loss</label>
       <input type="date" id="dol" />
       <div class="helper" id="range-display">Start &amp; end will auto-fill once a date is picked.</div>
@@ -197,7 +192,7 @@
     <div class="hint">
       <strong>On NOAA's page:</strong>
       <ol>
-        <li>Paste airport into search (already on clipboard)</li>
+        <li>Search for the airport in NOAA's search box</li>
         <li>Click <code>+ Select</code> → orange popup → <code>Configure and add</code></li>
         <li>Verify PDF pages → Add to cart → checkout with your email</li>
       </ol>
@@ -258,7 +253,6 @@
 
   // ---------- Restore prefs ----------
   $("email").value = prefs.email || "";
-  $("airport").value = prefs.lastAirport || "";
 
   // ---------- Date of loss → live range display ----------
   const updateRangeDisplay = () => {
@@ -278,7 +272,6 @@
   $("launch").addEventListener("click", () => {
     const dol = $("dol").value;
     const email = $("email").value.trim();
-    const airport = $("airport").value.trim();
 
     if (!dol) { alert("Pick a Date of Loss."); return; }
 
@@ -290,13 +283,12 @@
     ).map((cb) => cb.dataset.dt);
 
     // Persist
-    savePrefs({ email, lastAirport: airport });
+    savePrefs({ email });
 
-    // Copy airport (fallback: email) to clipboard for quick paste on NOAA
-    const toCopy = airport || email;
-    if (toCopy && navigator.clipboard) {
-      navigator.clipboard.writeText(toCopy).catch(() => {});
-      toast(`Copied "${toCopy}" to clipboard`);
+    // Copy email to clipboard so it's ready to paste at NOAA checkout
+    if (email && navigator.clipboard) {
+      navigator.clipboard.writeText(email).catch(() => {});
+      toast(`Copied email to clipboard`);
     }
 
     // Build NOAA URL
