@@ -3,259 +3,520 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>NOAA LCD v2 — Quick Launcher</title>
+<title>Property &amp; Weather Data Collection</title>
+
+<!-- Leaflet (free OpenStreetMap, no key) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <style>
   :root {
-    --bg: #0f1419;
-    --panel: #1a2028;
-    --panel-2: #232b36;
-    --ink: #e8eef5;
-    --muted: #8a96a6;
-    --accent: #4dd0a8;
-    --accent-dim: #2a8d6f;
-    --warn: #f4a261;
-    --border: #2d3744;
+    --bg: #f5f6f8;
+    --panel: #ffffff;
+    --panel-2: #fafbfc;
+    --ink: #1c2733;
+    --muted: #6b7785;
+    --border: #dde2e8;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --accent-soft: #eff4ff;
+    --success: #16a34a;
+    --danger: #dc2626;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
   }
   * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
   body {
-    margin: 0;
-    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background: var(--bg);
     color: var(--ink);
-    min-height: 100vh;
-    padding: 2rem 1rem;
     line-height: 1.5;
+    min-height: 100vh;
   }
-  .wrap { max-width: 720px; margin: 0 auto; }
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
   header {
-    border-bottom: 2px solid var(--accent);
-    padding-bottom: 1rem;
     margin-bottom: 2rem;
   }
   h1 {
-    margin: 0;
-    font-size: 1.4rem;
-    letter-spacing: 0.02em;
-  }
-  h1 .tag {
-    color: var(--accent);
-    font-weight: 400;
-  }
-  .sub {
-    color: var(--muted);
-    font-size: 0.85rem;
-    margin-top: 0.25rem;
-  }
-  section {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 1.25rem;
-    margin-bottom: 1rem;
-  }
-  .section-label {
-    font-size: 0.75rem;
-    color: var(--accent);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 0.75rem;
-  }
-  label { display: block; font-size: 0.85rem; margin-bottom: 0.35rem; color: var(--muted); }
-  input[type=text], input[type=email], input[type=date] {
-    width: 100%;
-    background: var(--bg);
-    border: 1px solid var(--border);
+    margin: 0 0 0.5rem 0;
+    font-size: 1.75rem;
+    font-weight: 600;
     color: var(--ink);
-    padding: 0.6rem 0.75rem;
-    border-radius: 4px;
-    font-family: inherit;
+  }
+  .lede {
+    margin: 0;
+    color: var(--muted);
     font-size: 0.95rem;
   }
-  input:focus { outline: none; border-color: var(--accent); }
-  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-  .checks {
+
+  /* ---------- Tabs ---------- */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 1.5rem;
+  }
+  .tab {
+    background: none;
+    border: none;
+    padding: 0.75rem 1.25rem;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 0.95rem;
+    font-weight: 500;
+    font-family: inherit;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.15s;
+  }
+  .tab:hover { color: var(--ink); }
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* ---------- Two-column layout ---------- */
+  .grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.5rem 1rem;
-    margin-top: 0.5rem;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
   }
-  .check {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-    cursor: pointer;
-    padding: 0.35rem 0;
-    font-size: 0.9rem;
+  @media (max-width: 880px) {
+    .grid { grid-template-columns: 1fr; }
   }
-  .check input { margin-top: 0.2rem; accent-color: var(--accent); }
-  .check span { user-select: none; }
-  .group-label {
-    font-size: 0.7rem;
-    color: var(--warn);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-top: 0.75rem;
-    margin-bottom: 0.25rem;
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    box-shadow: var(--shadow);
   }
-  .group-label:first-of-type { margin-top: 0; }
-  button {
-    width: 100%;
-    background: var(--accent);
-    color: #0a1410;
-    border: none;
-    padding: 1rem;
-    font-family: inherit;
-    font-size: 1rem;
+  .card h3 {
+    margin: 0 0 1rem 0;
+    font-size: 0.95rem;
     font-weight: 600;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background 0.15s;
+    color: var(--ink);
   }
-  button:hover { background: #5fe0b5; }
-  button:disabled { background: var(--panel-2); color: var(--muted); cursor: not-allowed; }
-  .recall {
+  .card .subtitle {
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 400;
+    margin-left: 0.5rem;
+  }
+
+  /* ---------- Form fields ---------- */
+  .field { margin-bottom: 1rem; }
+  .field:last-child { margin-bottom: 0; }
+  label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 0.35rem;
+  }
+  input[type=text], input[type=email], input[type=date], input[type=number], select {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    background: var(--panel);
+    color: var(--ink);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  /* ---------- Map ---------- */
+  #map {
+    width: 100%;
+    height: 320px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+  }
+  .map-hint {
     font-size: 0.78rem;
     color: var(--muted);
     margin-top: 0.5rem;
+    text-align: center;
   }
-  .recall a {
+
+  /* ---------- Action buttons grid ---------- */
+  .actions {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 880px) {
+    .actions { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 480px) {
+    .actions { grid-template-columns: 1fr; }
+  }
+  .action-btn {
+    padding: 1rem 0.75rem;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--ink);
+    transition: all 0.15s;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .action-btn:hover {
+    border-color: var(--accent);
     color: var(--accent);
-    text-decoration: none;
+    transform: translateY(-1px);
+  }
+  .action-btn.primary {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .action-btn.primary:hover {
+    background: var(--accent-hover);
+    color: white;
+  }
+  .action-btn .icon {
+    font-size: 1.4rem;
+    line-height: 1;
+  }
+  .action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* ---------- Reset ---------- */
+  .footer-actions {
+    text-align: right;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+  .reset-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.85rem;
+    transition: all 0.15s;
+  }
+  .reset-btn:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+
+  /* ---------- Weather modal ---------- */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--panel);
+    border-radius: 10px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 1.75rem;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+  }
+  .modal h2 {
+    margin: 0 0 1rem 0;
+    font-size: 1.25rem;
+  }
+  .modal .close {
+    float: right;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--muted);
+    padding: 0;
+    line-height: 1;
+  }
+  .modal .close:hover { color: var(--ink); }
+  .checks-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem 1rem;
+    margin: 0.5rem 0 1rem 0;
+  }
+  .check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.88rem;
     cursor: pointer;
   }
-  .recall a:hover { text-decoration: underline; }
-  .hint {
-    background: var(--panel-2);
-    border-left: 3px solid var(--warn);
-    padding: 0.75rem 1rem;
-    font-size: 0.82rem;
-    color: var(--ink);
-    margin-top: 1rem;
-    border-radius: 0 4px 4px 0;
-  }
-  .hint strong { color: var(--warn); }
-  ol.steps {
-    margin: 0.5rem 0 0 1.2rem;
-    padding: 0;
-    color: var(--muted);
-    font-size: 0.82rem;
-  }
-  ol.steps li { margin: 0.25rem 0; }
-  .pill {
-    display: inline-block;
-    background: var(--accent-dim);
-    color: var(--ink);
-    padding: 0.1rem 0.5rem;
-    border-radius: 3px;
-    font-size: 0.75rem;
-    margin-left: 0.4rem;
-  }
-  footer {
-    margin-top: 2rem;
-    text-align: center;
+  .check input { accent-color: var(--accent); }
+  .group-label {
     font-size: 0.72rem;
     color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0.75rem 0 0.4rem 0;
+    font-weight: 600;
   }
-  @media (max-width: 520px) {
-    .row, .checks { grid-template-columns: 1fr; }
+  .modal .launch {
+    width: 100%;
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 0.9rem;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 1rem;
   }
+  .modal .launch:hover { background: var(--accent-hover); }
+  .modal-hint {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    padding: 0.6rem 0.85rem;
+    border-radius: 0 6px 6px 0;
+    font-size: 0.82rem;
+    margin-top: 0.75rem;
+    color: var(--ink);
+  }
+  .modal-hint ol { margin: 0.25rem 0 0 1.1rem; padding: 0; }
+  .modal-hint li { margin: 0.15rem 0; }
+
+  /* ---------- Status toast ---------- */
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    background: var(--ink);
+    color: white;
+    padding: 0.75rem 1.25rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    z-index: 2000;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
 </style>
 </head>
 <body>
-<div class="wrap">
+
+<div class="container">
 
   <header>
-    <h1>NOAA LCD v2 <span class="tag">// quick launcher</span></h1>
-    <div class="sub">Skip the 8-step click-through. Pre-fills your dates, data types, and remembers your email.</div>
+    <h1>Property &amp; Weather Data Collection</h1>
+    <p class="lede">Enter an address and date to collect property records, permit information, and weather data.</p>
   </header>
 
-  <section>
-    <div class="section-label">1 · Airport</div>
-    <label for="airport">Airport name or ICAO (you'll search for this on the NOAA page)</label>
-    <input type="text" id="airport" placeholder="e.g. Fort Lauderdale Executive or KFXE" autocomplete="off" />
-    <div class="recall">Last used: <a id="recall-airport">—</a></div>
-  </section>
+  <!-- Tabs -->
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="address" role="tab">Search by Address</button>
+    <button class="tab" data-tab="coords" role="tab">Search by Coordinates</button>
+  </div>
 
-  <section>
-    <div class="section-label">2 · Date Range</div>
-    <div class="row">
-      <div>
-        <label for="start">Start</label>
-        <input type="date" id="start" />
+  <!-- Two-column layout -->
+  <div class="grid">
+
+    <!-- LEFT: Inputs -->
+    <div class="card">
+      <h3>Location <span class="subtitle">where to look</span></h3>
+
+      <div class="field" data-tab-panel="address">
+        <label for="address">Property Address</label>
+        <input type="text" id="address" placeholder="e.g. 123 Main St, Fort Lauderdale, FL" autocomplete="street-address" />
       </div>
-      <div>
-        <label for="end">End</label>
-        <input type="date" id="end" />
+
+      <div class="field" data-tab-panel="coords" style="display:none;">
+        <div class="row-2">
+          <div>
+            <label for="lat">Latitude</label>
+            <input type="number" id="lat" step="0.0001" placeholder="26.1991" />
+          </div>
+          <div>
+            <label for="lon">Longitude</label>
+            <input type="number" id="lon" step="0.0001" placeholder="-80.1776" />
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="appraiser">Property Appraiser</label>
+        <select id="appraiser">
+          <option value="">— Select county appraiser —</option>
+          <option value="broward">Broward County</option>
+          <option value="miami-dade">Miami-Dade County</option>
+          <option value="palm-beach">Palm Beach County</option>
+          <option value="orange">Orange County</option>
+          <option value="hillsborough">Hillsborough County</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="weather-date">Weather Date</label>
+        <input type="date" id="weather-date" />
       </div>
     </div>
-    <div class="recall"><a id="today-link">Set both to today</a> · <a id="yesterday-link">Yesterday</a> · <a id="week-link">Last 7 days</a></div>
-  </section>
 
-  <section>
-    <div class="section-label">3 · Data Types <span class="pill">all checked by default</span></div>
+    <!-- RIGHT: Map -->
+    <div class="card">
+      <h3>Location Map <span class="subtitle">click or drag marker</span></h3>
+      <div id="map"></div>
+      <div class="map-hint">Click on map or drag marker to select location</div>
+    </div>
+
+  </div>
+
+  <!-- Action buttons -->
+  <div class="actions">
+    <button class="action-btn" data-action="property">
+      <span class="icon">📋</span>
+      <span>Property Data</span>
+    </button>
+    <button class="action-btn" data-action="permit">
+      <span class="icon">📄</span>
+      <span>Permit Data</span>
+    </button>
+    <button class="action-btn" data-action="aerial">
+      <span class="icon">🛰️</span>
+      <span>Aerial Image</span>
+    </button>
+    <button class="action-btn primary" data-action="weather">
+      <span class="icon">🌦️</span>
+      <span>Weather Data</span>
+    </button>
+    <button class="action-btn" data-action="sed">
+      <span class="icon">📊</span>
+      <span>SED Data</span>
+    </button>
+  </div>
+
+  <div class="footer-actions">
+    <button class="reset-btn" id="reset">Reset All</button>
+  </div>
+
+</div>
+
+<!-- Weather Modal -->
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal">
+    <button class="close" id="modal-close" aria-label="Close">×</button>
+    <h2>Weather Data Request</h2>
+    <p style="color: var(--muted); font-size: 0.9rem; margin: 0 0 1rem 0;">
+      Confirm date range, data types, and email — then we'll open NOAA's LCDv2 search pre-filled.
+    </p>
+
+    <div class="field">
+      <label for="m-airport">Airport name or ICAO</label>
+      <input type="text" id="m-airport" placeholder="e.g. Fort Lauderdale Executive or KFXE" />
+    </div>
+
+    <div class="row-2">
+      <div class="field">
+        <label for="m-start">Start date</label>
+        <input type="date" id="m-start" />
+      </div>
+      <div class="field">
+        <label for="m-end">End date</label>
+        <input type="date" id="m-end" />
+      </div>
+    </div>
 
     <div class="group-label">Hourly</div>
-    <div class="checks">
-      <label class="check"><input type="checkbox" data-dt="HourlyWindSpeed" checked /><span>Hourly wind speed</span></label>
-      <label class="check"><input type="checkbox" data-dt="HourlyWindGustSpeed" checked /><span>Hourly wind gust speed</span></label>
-      <label class="check"><input type="checkbox" data-dt="HourlyPrecipitation" checked /><span>Hourly precipitation</span></label>
+    <div class="checks-grid">
+      <label class="check"><input type="checkbox" data-dt="HourlyWindSpeed" checked /> Hourly wind speed</label>
+      <label class="check"><input type="checkbox" data-dt="HourlyWindGustSpeed" checked /> Hourly wind gust speed</label>
+      <label class="check"><input type="checkbox" data-dt="HourlyPrecipitation" checked /> Hourly precipitation</label>
     </div>
 
     <div class="group-label">Daily</div>
-    <div class="checks">
-      <label class="check"><input type="checkbox" data-dt="DailyPeakWindSpeed" checked /><span>Daily peak wind speed</span></label>
-      <label class="check"><input type="checkbox" data-dt="DailyPeakWindDirection" checked /><span>Daily peak wind direction</span></label>
-      <label class="check"><input type="checkbox" data-dt="DailyPrecipitation" checked /><span>Daily precipitation</span></label>
-      <label class="check"><input type="checkbox" data-dt="DailySustainedWindSpeed" checked /><span>Daily sustained wind speed</span></label>
-      <label class="check"><input type="checkbox" data-dt="DailySustainedWindDirection" checked /><span>Daily sustained wind direction</span></label>
-      <label class="check"><input type="checkbox" data-dt="DailyWeather" checked /><span>Daily weather</span></label>
+    <div class="checks-grid">
+      <label class="check"><input type="checkbox" data-dt="DailyPeakWindSpeed" checked /> Daily peak wind speed</label>
+      <label class="check"><input type="checkbox" data-dt="DailyPeakWindDirection" checked /> Daily peak wind direction</label>
+      <label class="check"><input type="checkbox" data-dt="DailyPrecipitation" checked /> Daily precipitation</label>
+      <label class="check"><input type="checkbox" data-dt="DailySustainedWindSpeed" checked /> Daily sustained wind speed</label>
+      <label class="check"><input type="checkbox" data-dt="DailySustainedWindDirection" checked /> Daily sustained wind direction</label>
+      <label class="check"><input type="checkbox" data-dt="DailyWeather" checked /> Daily weather</label>
     </div>
-  </section>
 
-  <section>
-    <div class="section-label">4 · Email (for cart confirmation)</div>
-    <input type="email" id="email" placeholder="you@example.com" autocomplete="email" />
-    <div class="recall">NOAA emails the certified PDF here. Saved locally so you don't retype.</div>
-  </section>
+    <div class="field" style="margin-top: 1rem;">
+      <label for="m-email">Email (for cart confirmation)</label>
+      <input type="email" id="m-email" placeholder="you@example.com" />
+    </div>
 
-  <button id="launch">Open NOAA — pre-filled →</button>
+    <button class="launch" id="m-launch">Open NOAA — pre-filled →</button>
 
-  <div class="hint">
-    <strong>What happens next:</strong>
-    <ol class="steps">
-      <li>NOAA opens with your dates &amp; data types already applied</li>
-      <li>Type your airport in the search box (top of page) and pick it</li>
-      <li>Click <code>+ Select</code> on the dataset row → orange pop-up → <code>Configure and add</code></li>
-      <li>Verify <code>Edit PDF Pages</code> has Daily Summary, Hourly Observations, Hourly Precip checked</li>
-      <li>Add to cart → check out → paste your email (it's on your clipboard)</li>
-    </ol>
+    <div class="modal-hint">
+      <strong>On NOAA's page:</strong>
+      <ol>
+        <li>Paste airport into search (already on clipboard)</li>
+        <li>Click <code>+ Select</code> → <code>Configure and add</code></li>
+        <li>Verify PDF pages → Add to cart → checkout with your email</li>
+      </ol>
+    </div>
   </div>
-
-  <footer>
-    Tool generates a deep link to ncei.noaa.gov · Your data stays in your browser ·
-    Email &amp; last airport saved via localStorage
-  </footer>
-
 </div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
 
 <script>
 (function () {
   "use strict";
 
   const $ = (id) => document.getElementById(id);
+  const $$ = (sel) => document.querySelectorAll(sel);
 
-  // ---------- localStorage helpers (with graceful failure) ----------
-  const LS_KEY = "noaa_lcd_launcher_v1";
+  // ---------- localStorage ----------
+  const LS_KEY = "pwdc_prefs_v1";
   const loadPrefs = () => {
     try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}"); }
     catch { return {}; }
   };
   const savePrefs = (p) => {
     try { localStorage.setItem(LS_KEY, JSON.stringify(p)); }
-    catch { /* private mode etc. — silently skip */ }
+    catch {}
   };
+  const prefs = loadPrefs();
 
   // ---------- Date helpers ----------
   const isoDate = (d) => {
@@ -264,71 +525,139 @@
     const day = String(d.getDate()).padStart(2, "0");
     return `${y}-${m}-${day}`;
   };
-  const today = () => isoDate(new Date());
-  const offsetDate = (days) => {
-    const d = new Date();
-    d.setDate(d.getDate() + days);
-    return isoDate(d);
+  const today = isoDate(new Date());
+
+  // ---------- Toast ----------
+  let toastTimer;
+  const toast = (msg) => {
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2400);
   };
 
-  // ---------- Init from prefs ----------
-  const prefs = loadPrefs();
-  $("email").value = prefs.email || "";
-  $("airport").value = ""; // always start blank — but show last used
-  if (prefs.lastAirport) {
-    $("recall-airport").textContent = prefs.lastAirport;
-    $("recall-airport").onclick = () => { $("airport").value = prefs.lastAirport; };
-  } else {
-    $("recall-airport").textContent = "(none yet)";
+  // ---------- Tabs ----------
+  $$(".tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      $$(".tab").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      const which = btn.dataset.tab;
+      $$('[data-tab-panel]').forEach((p) => {
+        p.style.display = (p.dataset.tabPanel === which) ? "" : "none";
+      });
+    });
+  });
+
+  // ---------- Map (Leaflet + OpenStreetMap) ----------
+  let map, marker;
+  const initialLat = prefs.lat || 26.1991;
+  const initialLon = prefs.lon || -80.1776;
+
+  try {
+    map = L.map("map").setView([initialLat, initialLon], 11);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    marker = L.marker([initialLat, initialLon], { draggable: true }).addTo(map);
+
+    const syncFromMarker = () => {
+      const ll = marker.getLatLng();
+      $("lat").value = ll.lat.toFixed(4);
+      $("lon").value = ll.lng.toFixed(4);
+    };
+    syncFromMarker();
+
+    marker.on("dragend", syncFromMarker);
+    map.on("click", (e) => {
+      marker.setLatLng(e.latlng);
+      syncFromMarker();
+    });
+  } catch (err) {
+    $("map").innerHTML = '<div style="padding:2rem;text-align:center;color:#888;">Map could not load (offline?). You can still enter coordinates manually.</div>';
   }
 
-  // Default dates → today
-  $("start").value = today();
-  $("end").value = today();
+  // Sync coords input → marker
+  ["lat", "lon"].forEach((id) => {
+    $(id).addEventListener("change", () => {
+      const lat = parseFloat($("lat").value);
+      const lon = parseFloat($("lon").value);
+      if (!isNaN(lat) && !isNaN(lon) && marker) {
+        marker.setLatLng([lat, lon]);
+        map.setView([lat, lon]);
+      }
+    });
+  });
 
-  // Quick date buttons
-  $("today-link").onclick = () => { $("start").value = today(); $("end").value = today(); };
-  $("yesterday-link").onclick = () => { $("start").value = offsetDate(-1); $("end").value = offsetDate(-1); };
-  $("week-link").onclick = () => { $("start").value = offsetDate(-7); $("end").value = today(); };
+  // ---------- Defaults from prefs ----------
+  $("weather-date").value = prefs.weatherDate || today;
+  $("address").value = prefs.address || "";
 
-  // ---------- Launch ----------
-  $("launch").addEventListener("click", () => {
-    const start = $("start").value;
-    const end = $("end").value;
-    const email = $("email").value.trim();
-    const airport = $("airport").value.trim();
+  // ---------- Action buttons ----------
+  $$(".action-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const action = btn.dataset.action;
+      if (action === "weather") {
+        openWeatherModal();
+      } else {
+        toast(`"${btn.textContent.trim()}" — not wired yet (this is the weather-focused build)`);
+      }
+    });
+  });
 
-    if (!start || !end) {
-      alert("Pick a start and end date.");
-      return;
+  // ---------- Weather modal ----------
+  const openWeatherModal = () => {
+    const date = $("weather-date").value || today;
+    $("m-start").value = date;
+    $("m-end").value = date;
+    $("m-email").value = prefs.email || "";
+    $("m-airport").value = prefs.lastAirport || "";
+    $("modal-backdrop").classList.add("open");
+  };
+
+  $("modal-close").addEventListener("click", () => {
+    $("modal-backdrop").classList.remove("open");
+  });
+  $("modal-backdrop").addEventListener("click", (e) => {
+    if (e.target === $("modal-backdrop")) {
+      $("modal-backdrop").classList.remove("open");
     }
-    if (start > end) {
-      alert("Start date must be on or before end date.");
-      return;
-    }
+  });
 
-    // Collect checked data types
+  $("m-launch").addEventListener("click", () => {
+    const start = $("m-start").value;
+    const end = $("m-end").value;
+    const email = $("m-email").value.trim();
+    const airport = $("m-airport").value.trim();
+
+    if (!start || !end) { alert("Pick a start and end date."); return; }
+    if (start > end) { alert("Start date must be on or before end date."); return; }
+
     const dataTypes = Array.from(
-      document.querySelectorAll('input[type=checkbox][data-dt]:checked')
+      document.querySelectorAll('.modal input[type=checkbox][data-dt]:checked')
     ).map((cb) => cb.dataset.dt);
 
-    // Save prefs for next time
+    // Persist
     savePrefs({
-      email: email,
-      lastAirport: airport || prefs.lastAirport || "",
+      ...loadPrefs(),
+      email,
+      lastAirport: airport,
+      address: $("address").value.trim(),
+      lat: parseFloat($("lat").value) || undefined,
+      lon: parseFloat($("lon").value) || undefined,
+      weatherDate: $("weather-date").value,
     });
 
-    // Copy email to clipboard so it's ready to paste at checkout
-    if (email && navigator.clipboard) {
-      navigator.clipboard.writeText(email).catch(() => { /* ignore */ });
+    // Copy airport (or email if no airport) to clipboard
+    const toCopy = airport || email;
+    if (toCopy && navigator.clipboard) {
+      navigator.clipboard.writeText(toCopy).catch(() => {});
+      toast(`Copied "${toCopy}" to clipboard`);
     }
 
-    // Build NOAA URL.
-    // NOAA's data-search pages accept these query params for pre-filtering:
-    //   startDate, endDate, dataTypes (comma-separated)
-    // The airport/station search itself is a free-text box on the page — we
-    // can't pre-fill it via URL (NOAA doesn't expose that param), so we
-    // surface it on-screen and copy it to clipboard as a fallback.
+    // Build NOAA URL
     const base = "https://www.ncei.noaa.gov/access/search/data-search/local-climatological-data-v2";
     const params = new URLSearchParams();
     params.set("startDate", start + "T00:00:00");
@@ -336,23 +665,36 @@
     if (dataTypes.length) params.set("dataTypes", dataTypes.join(","));
     const url = `${base}?${params.toString()}`;
 
-    // If the user gave an airport, give them a quick toast so they remember to paste it
-    if (airport) {
-      // Copy airport name to clipboard instead of email if both — airport is
-      // what they need to paste first.
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(airport).catch(() => {});
-      }
-    }
-
-    window.open(url, "_blank", "noopener");
+    setTimeout(() => window.open(url, "_blank", "noopener"), 200);
   });
 
-  // Persist email on blur so it's saved even if user closes tab without launching
-  $("email").addEventListener("blur", () => {
-    const cur = loadPrefs();
-    cur.email = $("email").value.trim();
-    savePrefs(cur);
+  // ---------- Reset ----------
+  $("reset").addEventListener("click", () => {
+    if (!confirm("Clear all fields and saved preferences?")) return;
+    try { localStorage.removeItem(LS_KEY); } catch {}
+    $("address").value = "";
+    $("lat").value = "";
+    $("lon").value = "";
+    $("appraiser").value = "";
+    $("weather-date").value = today;
+    if (marker && map) {
+      marker.setLatLng([26.1991, -80.1776]);
+      map.setView([26.1991, -80.1776], 11);
+      $("lat").value = "26.1991";
+      $("lon").value = "-80.1776";
+    }
+    toast("Reset complete");
+  });
+
+  // Persist address as you type (debounced)
+  let addrTimer;
+  $("address").addEventListener("input", () => {
+    clearTimeout(addrTimer);
+    addrTimer = setTimeout(() => {
+      const cur = loadPrefs();
+      cur.address = $("address").value.trim();
+      savePrefs(cur);
+    }, 500);
   });
 })();
 </script>
